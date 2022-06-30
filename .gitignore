@@ -1,0 +1,13 @@
+pedal/pages/__pycache__/*
+pedal/__pycache__/__init__.cpython-39.pyc
+pedal/__pycache__/__main__.cpython-39.pyc
+pedal/__pycache__/activityArchive.cpython-39.pyc
+pedal/__pycache__/dash.cpython-39.pyc
+pedal/__pycache__/utils_fx.cpython-39.pyc
+pedal/__pycache__/utils_loading.cpython-39.pyc
+activities/R17.xml
+activities/R17.csv
+activities/R50_big_foot_hills_.csv
+activities/R50_big_foot_hills_.xml
+activities/R63.csv
+activities/R63.xml

@@ -7,11 +7,11 @@ import utils_loading
 
 dash.register_page(__name__)
 ## load data
-default_input_path = "C:\\Users\\maziegle\\OneDrive - Capgemini\\Documents\\training\\cycling_exercise\\"
+default_input_path = "C:\\Users\\maziegle\\OneDrive - Capgemini\\Documents\\training\\cycling_exercise\\activities\\"
 
 #populate list
 activities = utils_loading.get_activities(default_input_path, 'gpx')
-utils_loading.batch_convert(default_input_path,'json',default_input_path)
+#utils_loading.batch_convert(default_input_path,'json',default_input_path)
 
 layout = html.Div(children=[
     html.H1(children='This is the visualization page'),

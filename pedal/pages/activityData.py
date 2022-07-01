@@ -111,26 +111,18 @@ def update_PolarFig(activity, key_radius, key_colour):
     Output('activitypage-graph-map','figure'),
     Input('activitypage-df','data')
 )
-def update_MapFig(jsondata):
+def update_MapFig(jsondata,reduce=5):
     activity = pd.read_json(jsondata, orient='split')
 
-    fig = px.scatter_geo(data_frame=activity,
+    fig = px.scatter_mapbox(data_frame=activity,
         lat=activity["lat"],
         lon=activity["lon"],
         color=activity["gradient"],
-        projection='natural earth',
-        scope='europe',
         center={'lat':activity.iloc[0].lat, 'lon':activity.iloc[0].lon},
-        title="Data through the map")
-    fig.update_geos(
-        visible=True,
-        resolution=50,
-        showcountries=True,
-        showlakes=True,
-        showrivers=True,
-        countrycolor="blue",
-    )
-    fig.update_layout(width=1080, height=720, overwrite=True)
+        title="Data through the map",
+        height=720,
+        width=1080,
+        mapbox_style="stamen-terrain")
 
     return fig
 

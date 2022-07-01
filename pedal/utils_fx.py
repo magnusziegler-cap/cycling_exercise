@@ -1,5 +1,7 @@
+from time import time
 import pandas as pd
 import numpy as np
+import math
 import os
 import gpxpy
 import gpxpy.gpx
@@ -17,23 +19,33 @@ def _calculate_speed(d,t):
 
 def _calculate_distance(lat_start, long_start, ele_start, lat_end, long_end, ele_end):
 
-    #basic euclidean because the distances should be short
-    dx = ((lat_end - lat_start)*ONE_DEGREE_M)**2 #should be in metres
-    dy = ((long_end - long_start)*ONE_DEGREE_M)**2 #should be in metres
-    dz = (ele_end - ele_start)**2 #metres
+    coef = math.cos(math.radians(lat_end))
+    dx = lat_end - lat_start
+    dy = (long_end - long_start) * coef
 
-    # print(dx,dy,dz)
+    d_2d = math.sqrt(dx**2 + dy**2) * ONE_DEGREE_M
+    if (ele_start is None or ele_end is None) or (ele_start == ele_end):
+        return d_2d
+    else:
+        return math.sqrt(d_2d**2 + (ele_end-ele_start)**2)
 
-    d = np.sqrt(dx+dy+dz)
+def _calc_d(df):
+    coef = df['lat'].rolling(window=2).apply(lambda x: math.cos(math.radians(x.iloc[1])))
+    dx = df['lat'].rolling(window=2).apply(lambda x: x.iloc[1]-x.iloc[0])
+    dy = df['lon'].rolling(window=2).apply(lambda x: x.iloc[1]-x.iloc[0]) * coef
+    dz = df['ele'].rolling(window=2).apply(lambda x: x.iloc[1]-x.iloc[0])
 
-    return d
-    
-def _calculate_elapsed_time(time_start, time_end):
+    d_2d = np.sqrt(dx**2 + dy**2) * ONE_DEGREE_M
+    # return d_2d
+    return np.sqrt(d_2d**2 + dz**2)
+
+def _calculate_elapsed_time(time_end,time_start):
 
     t = time_end-time_start
+    # t = x.iloc[-1] - x.iloc[0]
     t = t.seconds
-
-    return float(t) 
+    t = float(t)
+    return t
 
 def _calculate_gradient(lat_start, long_start, ele_start, lat_end, long_end, ele_end):
     
@@ -52,6 +64,14 @@ def _calculate_gradient(lat_start, long_start, ele_start, lat_end, long_end, ele
     
     return gradient
 
+def _calc_g(df):
+    dx = df['lat'].rolling(window=2).apply(lambda x: ((x.iloc[1]-x.iloc[0])*ONE_DEGREE_M)**2)
+    dy = df['lon'].rolling(window=2).apply(lambda x: ((x.iloc[1]-x.iloc[0])*ONE_DEGREE_M)**2)
+    dz = df['ele'].rolling(window=2).apply(lambda x: x.iloc[1]-x.iloc[0])
+    dxy = np.sqrt(dx+dy)
+    g = np.degrees(np.arctan(dz/dxy))
+    return g
+
 def set_track_origin(df, lat_origin:int=0, lon_origin:int=0, ele_origin:int=0):
     #shift the start of the track to (0,0)
     df["lon"] = df["lon"]-(df.iloc[0].lon-lon_origin)
@@ -62,24 +82,20 @@ def set_track_origin(df, lat_origin:int=0, lon_origin:int=0, ele_origin:int=0):
 
 def update_df(df:pd.DataFrame)->pd.DataFrame:
 
-    (rows, cols) = df.shape
+    # for row in range(1,rows):
+    #     start_lat = df.iloc[row-1].lat
+    #     start_lon = df.iloc[row-1].lon
+    #     start_ele = df.iloc[row-1].ele
+    #     stop_lat = df.iloc[row].lat
+    #     stop_lon = df.iloc[row].lon
+    #     stop_ele = df.iloc[row].ele
 
-    d = np.zeros(shape=(rows,1))
-    g = np.zeros(shape=(rows,1))
-    dt = np.zeros(shape=(rows,1))
-    s = np.zeros(shape=(rows,1))
-
-    for row in range(1,rows):
-        start_lat = df.iloc[row-1].lat
-        start_lon = df.iloc[row-1].lon
-        start_ele = df.iloc[row-1].ele
-        stop_lat = df.iloc[row].lat
-        stop_lon = df.iloc[row].lon
-        stop_ele = df.iloc[row].ele
-
-        d[row] = _calculate_distance(start_lat,start_lon,start_ele,stop_lat,stop_lon,stop_ele)
-        g[row] = _calculate_gradient(start_lat,start_lon,start_ele,stop_lat,stop_lon,stop_ele)
-        dt[row] = _calculate_elapsed_time(df.iloc[row-1].time, df.iloc[row].time)
+        # d[row] = _calculate_distance(start_lat,start_lon,start_ele,stop_lat,stop_lon,stop_ele)
+        # g[row] = _calculate_gradient(start_lat,start_lon,start_ele,stop_lat,stop_lon,stop_ele)
+        #dt[row] = _calculate_elapsed_time(df.iloc[row-1].time, df.iloc[row].time)
+    dt = df["elapsed_time_s"].rolling(window=2).apply(lambda x: x.iloc[1]-x.iloc[0])
+    d = _calc_d(df)
+    g = _calc_g(df)
 
     s = np.divide(d,dt)
     s[np.isnan(s)] = 0
@@ -93,6 +109,12 @@ def update_df(df:pd.DataFrame)->pd.DataFrame:
     if not "power" in df.columns:
         (r,c) = df.shape
         df.insert(loc=0,column="power",value=np.zeros(shape=(r,1)))
+    if not "cad" in df.columns:
+        (r,c) = df.shape
+        df.insert(loc=0,column="cad",value=np.zeros(shape=(r,1)))
+    if not "hr" in df.columns:
+        (r,c) = df.shape
+        df.insert(loc=0,column="hr",value=np.zeros(shape=(r,1)))
 
     return df
 
@@ -117,7 +139,9 @@ def apply_base_transforms(df, resting_hr=55, origin:tuple=(58.4108,15.6214,45)):
     df = scale_hr(df, resting_hr)
 
     (lat_origin, lon_origin, ele_origin) = origin
-    df = set_track_origin(df,lat_origin, lon_origin, ele_origin)
+    #if there is a big displacement (i.e. from zwift), move the track
+    if (abs(lat_origin-df.lat[0]) > 1) or (abs(lon_origin-df.lon[0]) > 1):
+        df = set_track_origin(df,lat_origin, lon_origin, ele_origin)
 
     ## round some data
     df["gradient"] = df["gradient"].round(decimals=3)

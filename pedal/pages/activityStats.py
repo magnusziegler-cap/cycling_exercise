@@ -1,4 +1,3 @@
-from click import progressbar
 import dash
 from dash import html, dcc, dash_table, Input, Output,State, callback
 import dash_bootstrap_components as dbc
@@ -8,6 +7,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from pyparsing import line
 import utils_fx, utils_loading
+import datetime
 
 
 dash.register_page(__name__,)
@@ -57,7 +57,7 @@ def calculate_summary_stats(activity):
         'name':activity['name'].iloc[0],
         'spd_mean':activity['speed'].mean().round(2),
         'spd_med':activity['speed'].median().round(2),
-        'elapsed_time':pd.to_timedelta(activity['elapsed_time'].iloc[-1], unit='h'),
+        'elapsed_time':activity['elapsed_time'].iloc[-1],
         'total_distance':activity['cumulative_distance'].iloc[-1].round(2)}
                  
     return summary
@@ -74,7 +74,7 @@ def build_summary_table(jsondata):
     activity_summary_data = pd.DataFrame(columns=col_names)
     tracks = pd.DataFrame(columns=col_names_track)
 
-    activities_list = pd.read_json(jsondata, 'split')
+    activities_list = pd.read_json(jsondata, orient='split')
 
     for path,name in zip(activities_list['path'], activities_list['name']):
         activity = utils_loading.load(input_path=path+name+DEFAULT_READ_FORMAT)
@@ -89,20 +89,24 @@ def build_summary_table(jsondata):
 
 @callback(
     Output("activity-summary-table", "children"),
-    Input("activity-summary-data","data")
+    Input("activity-summary-data","data"),
+    Input('activities-list','data')
 )
-def update_summary_table(activity_summary_data):
+def update_summary_table(activity_summary_data, activities_list):
     activity_summary_data = pd.read_json(activity_summary_data)
+    activities_list = pd.read_json(activities_list, orient='split')
+
+    activity_summary_data =pd.concat([activity_summary_data, activities_list['link']], axis=1)
+    print(activity_summary_data['elapsed_time'])
 
     fig = dash_table.DataTable(data=activity_summary_data.to_dict('records'),
-        columns=[{"name": i, "id": i} for i in activity_summary_data.columns],
+        columns=[{"name": i, "id": i, 'presentation':'markdown'} for i in activity_summary_data.columns],
         style_cell=dict(textAlign='left'),
         cell_selectable=True,
         row_selectable='multi',
         sort_action='native',
         hidden_columns=[],
         filter_action='native')
-
     return fig
 
 @callback(
@@ -112,38 +116,44 @@ def update_summary_table(activity_summary_data):
 def update_summary_map(tracks):
     tracks = pd.read_json(tracks)
     
+    fig = px.line_mapbox(
+            data_frame=tracks,
+            lat="lat",
+            lon="lon",
+            color="name",
+            mapbox_style="stamen-terrain",
+            height=1080,
+            width=1080)
 
-    fig = px.scatter_geo(
-        projection='natural earth',
-        scope='europe',
-        width=1080,
-        height=720
-    )
+    # fig = px.scatter_geo(
+    #     projection='natural earth',
+    #     scope='europe',
+    #     width=1080,
+    #     height=720
+    # )
+    # for i, (name) in enumerate(tracks['name'].unique()):
+    #     track = tracks.loc[tracks['name'] == name]
+    #     lats = pd.Series(track["lat"])
+    #     lon = pd.Series(track["lon"])
 
-    for i, (name) in enumerate(tracks['name'].unique()):
-        track = tracks.loc[tracks['name'] == name]
-        lats = pd.Series(track["lat"])
-        lon = pd.Series(track["lon"])
-
-        fig.add_trace(
-            go.Scattergeo(
-                lat=lats,
-                lon=lon,
-                mode='lines',
-                name=name,
-                line= dict(width=1))
-            )
-
-    fig.update_geos(
-        visible=True,
-        resolution=50,
-        showcountries=True,
-        showlakes=True,
-        showrivers=True,
-        countrycolor="black",
-        lakecolor="white",
-        rivercolor="white",
-        fitbounds="locations"
-        )
+    #     fig.add_trace(
+    #         go.Scattergeo(
+    #             lat=lats,
+    #             lon=lon,
+    #             mode='lines',
+    #             name=name,
+    #             line= dict(width=1))
+    #         )
+    # fig.update_geos(
+    #     visible=True,
+    #     resolution=50,
+    #     showcountries=True,
+    #     showlakes=True,
+    #     showrivers=True,
+    #     countrycolor="black",
+    #     lakecolor="white",
+    #     rivercolor="white",
+    #     fitbounds="locations"
+    #     )
     
     return fig

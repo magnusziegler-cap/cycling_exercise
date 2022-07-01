@@ -111,7 +111,7 @@ def update_PolarFig(activity, key_radius, key_colour):
     Output('activitypage-graph-map','figure'),
     Input('activitypage-df','data')
 )
-def update_MapFig(jsondata,reduce=5):
+def update_MapFig(jsondata):
     activity = pd.read_json(jsondata, orient='split')
 
     fig = px.scatter_mapbox(data_frame=activity,

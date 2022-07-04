@@ -97,7 +97,6 @@ Input('activities-list','data')
 def update_table(activities_list):
     activities_list = pd.read_json(activities_list, orient='split')
     
-
     cols = [{"name": i, "id": i, 'presentation':'markdown'} for i in activities_list.columns]
     fig = dash_table.DataTable(
             data=activities_list.to_dict('rows'),

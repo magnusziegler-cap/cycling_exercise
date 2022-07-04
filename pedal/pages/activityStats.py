@@ -96,7 +96,7 @@ def update_summary_table(activity_summary_data, activities_list):
     activity_summary_data = pd.read_json(activity_summary_data)
     activities_list = pd.read_json(activities_list, orient='split')
 
-    activity_summary_data =pd.concat([activity_summary_data, activities_list['link']], axis=1)
+    activity_summary_data = pd.concat([activity_summary_data, activities_list['link']], axis=1)
 
     fig = dash_table.DataTable(data=activity_summary_data.to_dict('records'),
         columns=[{"name": i, "id": i, 'presentation':'markdown'} for i in activity_summary_data.columns],

@@ -3,22 +3,25 @@ from dash import html, dash_table, dcc, callback, Output, Input
 import dash_bootstrap_components as dbc
 import utils_loading
 import pandas as pd
+import numpy as np
 import plotly.express as px
 import utils_loading
 import meteostat
 from meteostat import Hourly
 import datetime
+
 dash.register_page(__name__, path_template="/activity/<activity_name>")
 
+## statics
 default_input_path = "C:\\Users\\maziegle\\OneDrive - Capgemini\\Documents\\training\\cycling_exercise\\activities\\"
 weather_LUT=pd.DataFrame(columns=['Weather Condition'],
-     data=['clear','Fair','Cloudy','Overcast',
+     data=['Clear','Fair','Cloudy','Overcast',
     'Fog','Freezing Fog',
     'Light Rain','Rain','Heavy Rain','Freezing Rain','Heavy Freezing Rain',
     'Sleet','Heavy Sleet','Light Snowfall','Snowfall','Heavy Snowfall',
     'Rain Shower','Heavy Rain Shower','Sleet Shower','Heavy Sleet Shower',
     'Snow Shower','Heavy Snow Shower',
-    'Lightning','Hail','Thunderstorm','Heavy Thunderstorm','Storm'])
+    'Lightning','Hail','Thunderstorm','Heavy Thunderstorm','Storm','Unknown'])
     
 @callback(
     Output('activitypage-tabs-content', 'children'),
@@ -128,6 +131,7 @@ def update_MapFig(jsondata):
         lat=activity["lat"],
         lon=activity["lon"],
         color=activity["gradient"],
+        range_color=[-5,5],
         center={'lat':activity.iloc[0].lat, 'lon':activity.iloc[0].lon},
         title="Data through the map",
         height=720,
@@ -191,6 +195,8 @@ def update_HistFig(activity):
 
 @callback(
 Output("activitypage-weatherinfo", "children"),
+Output("activitypage-weathermeaninfo", "children"),
+Output("activitypage-weather-table","children"),
 Input("activitypage-df",'data')
 )
 def update_weatherData(activity):
@@ -208,7 +214,6 @@ def update_weatherData(activity):
                                 lat=activity.lat.mean(),
                                 lon=activity.lon.mean(),
                                 alt=activity.ele.iloc[0])
-    print("station id",weather_station.stations)
 
     start_time = pd.to_datetime(activity['time'].iloc[0], yearfirst=True, utc=True).to_pydatetime().replace(tzinfo=None)
     end_time = pd.to_datetime(activity['time'].iloc[-1], yearfirst=True, utc=True).to_pydatetime().replace(tzinfo=None)
@@ -218,13 +223,36 @@ def update_weatherData(activity):
                     start=start_time,
                     end=end_time)
     weather_data = weather_data.fetch()
+    weather_data.dropna(axis='columns', how='all')
+    weather_data['coco'] = weather_data['coco'].replace(np.nan, value=27)
+    weather_data['coco'] = weather_data['coco'].apply(lambda x:weather_LUT['Weather Condition'].iloc[int(x)])
+    weather_data.insert(loc=0, column="time", value=weather_data.index)
+    
+    print(weather_data)
 
-    weather_string_g = f"The activity took place when the weather was classified as: {weather_LUT['Weather Condition'].iloc[int((weather_data.coco.iloc[0]))]}."
-    weather_string_t = f"The temperature was: {weather_data.temp.iloc[0]} Degrees Celcius, with humidity of: {weather_data.rhum.iloc[0]}%."
-    weather_string_w = f"The wind was: {weather_data.wspd.iloc[0]} km/h, gusting to {weather_data.wpgt.iloc[0]}, blowing: {weather_data.wdir.iloc[0]} degrees."
+    ## at start
+    weather_string_g = f"The activity started when the weather was classified as: {weather_data.coco.iloc[0]}. "
+    weather_string_t = f"The temperature was: {weather_data.temp.iloc[0]} Degrees Celcius, with humidity of: {weather_data.rhum.iloc[0]}%. "
+    weather_string_w = f"The wind was: {weather_data.wspd.iloc[0]} km/h, gusting to {weather_data.wpgt.iloc[0]}, blowing: {weather_data.wdir.iloc[0]} degrees. "
     weather_string = weather_string_g + weather_string_t + weather_string_w
 
-    return weather_string
+    ## mean
+    weather_string_gm = f"As a whole, the weather was: {weather_data['coco'].mode()[0]}. "
+    weather_string_tm = f"On average the temperature was: {weather_data['temp'].mean().round()} Degrees Celcius, with humidity of: {weather_data.rhum.mean().round()}%. "
+    weather_string_wm = f"The wind was typically: {weather_data.wspd.mean().round()} km/h, gusting to {weather_data.wpgt.mean().round()}, and blowing: {weather_data.wdir.mean().round()} degrees. "
+    weather_string_mean = weather_string_gm + weather_string_tm + weather_string_wm
+
+    ## table
+    weather_table = dash_table.DataTable(data=weather_data.to_dict('records'),
+        columns=[{"name": i, "id": i} for i in weather_data.columns],
+        style_cell=dict(textAlign='left'),
+        cell_selectable=True,
+        row_selectable='multi',
+        sort_action='native',
+        hidden_columns=[],
+        filter_action='native')
+
+    return weather_string, weather_string_mean, weather_table
 
 @callback(
 Output("activitypage-description", "children"),
@@ -249,8 +277,8 @@ def layout(activity_name=None):
                 title="Description",
                 children=[
                 html.Div(children=[
-                    html.H3(children="Description:"),
                     dbc.Spinner(children=[
+                        html.H3(children="Description:"),
                         html.Article(children=[], id='activitypage-description')
                         ])
                     ])
@@ -259,9 +287,11 @@ def layout(activity_name=None):
                 title="Weather",
                 children=[
                 html.Div(children=[
-                    html.H3(children="Weather:"),
                     dbc.Spinner(children=[
-                        html.Article(children=[], id='activitypage-weatherinfo')
+                        html.H3(children="Weather:"),
+                        html.P(children=[], id='activitypage-weatherinfo'),
+                        html.P(children=[], id="activitypage-weathermeaninfo"),
+                        dbc.Table(children=[], id="activitypage-weather-table")
                         ])
                     ])
                 ]),

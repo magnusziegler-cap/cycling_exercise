@@ -70,7 +70,7 @@ app.layout = html.Div(
         sidebar,
         content,
         # dcc.Store stores the activity dataframe
-        dcc.Store(id='activity-df'),
+        dcc.Store(id='activity-df', storage_type='memory'),
         dcc.Store(id='activities-list', storage_type='session'),
     ]
 )

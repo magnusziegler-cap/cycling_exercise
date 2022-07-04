@@ -7,7 +7,7 @@ import pandas as pd
 
 ## statics
 default_input_path = "C:\\Users\\maziegle\\OneDrive - Capgemini\\Documents\\training\\cycling_exercise\\activities\\"
-activities_list = pd.DataFrame(data={})
+#activities_list = pd.DataFrame(data={})
 
 dash.register_page(__name__)
 
@@ -70,7 +70,6 @@ layout = html.Div(children=[
 
 @callback(
     Output('activities-list','data'),
-    Output('archive-table-activities','children'),
     State('archive-input-path','value'),
     State('archive-dropdown-format','value'),
     Input("button-scan-folder","n_clicks"),
@@ -81,17 +80,24 @@ def list_activities(input_path, format, n_clicks):
         #populate list
         activities_list = utils_loading.get_activities(input_path, format)
         activities_list = pd.DataFrame.from_dict(activities_list)
+        activities_list = append_links(activities_list)
 
-        fig = update_table(activities_list)
-
+        # fig = update_table(activities_list)
+    
     else:
         activities_list = pd.DataFrame(data=[])
         fig = {}
 
-    return activities_list.to_json(date_format='iso', orient='split'), fig
+    return activities_list.to_json(date_format='iso', orient='split') #, fig
 
+@callback(
+Output('archive-table-activities','children'),
+Input('activities-list','data')
+)
 def update_table(activities_list):
-    activities_list = append_links(activities_list)
+    activities_list = pd.read_json(activities_list, orient='split')
+    
+
     cols = [{"name": i, "id": i, 'presentation':'markdown'} for i in activities_list.columns]
     fig = dash_table.DataTable(
             data=activities_list.to_dict('rows'),

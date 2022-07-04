@@ -5,11 +5,21 @@ import utils_loading
 import pandas as pd
 import plotly.express as px
 import utils_loading
-
+import meteostat
+from meteostat import Hourly
+import datetime
 dash.register_page(__name__, path_template="/activity/<activity_name>")
 
 default_input_path = "C:\\Users\\maziegle\\OneDrive - Capgemini\\Documents\\training\\cycling_exercise\\activities\\"
-
+weather_LUT=pd.DataFrame(columns=['Weather Condition'],
+     data=['clear','Fair','Cloudy','Overcast',
+    'Fog','Freezing Fog',
+    'Light Rain','Rain','Heavy Rain','Freezing Rain','Heavy Freezing Rain',
+    'Sleet','Heavy Sleet','Light Snowfall','Snowfall','Heavy Snowfall',
+    'Rain Shower','Heavy Rain Shower','Sleet Shower','Heavy Sleet Shower',
+    'Snow Shower','Heavy Snow Shower',
+    'Lightning','Hail','Thunderstorm','Heavy Thunderstorm','Storm'])
+    
 @callback(
     Output('activitypage-tabs-content', 'children'),
     Input('activitypage-tabs','value'),
@@ -179,28 +189,103 @@ def update_HistFig(activity):
 
     return fig
 
+@callback(
+Output("activitypage-weatherinfo", "children"),
+Input("activitypage-df",'data')
+)
+def update_weatherData(activity):
+    activity = pd.read_json(activity, orient='split')
+
+    #grab weatherdata from nearest station to starting point if elapsed time is less than 2h (i.e a short ride)
+    if(pd.to_timedelta(activity['elapsed_time'].iloc[-1]) <= datetime.timedelta(hours=2)):
+        weather_station = meteostat.Point(
+                                lat=activity.lat.iloc[0],
+                                lon=activity.lon.iloc[0],
+                                alt=activity.ele.iloc[0])
+    else:
+        #else we take the centroid
+        weather_station = meteostat.Point(
+                                lat=activity.lat.mean(),
+                                lon=activity.lon.mean(),
+                                alt=activity.ele.iloc[0])
+    print("station id",weather_station.stations)
+
+    start_time = pd.to_datetime(activity['time'].iloc[0], yearfirst=True, utc=True).to_pydatetime().replace(tzinfo=None)
+    end_time = pd.to_datetime(activity['time'].iloc[-1], yearfirst=True, utc=True).to_pydatetime().replace(tzinfo=None)
+
+    weather_data = Hourly(
+                    loc=weather_station,
+                    start=start_time,
+                    end=end_time)
+    weather_data = weather_data.fetch()
+
+    weather_string_g = f"The activity took place when the weather was classified as: {weather_LUT['Weather Condition'].iloc[int((weather_data.coco.iloc[0]))]}."
+    weather_string_t = f"The temperature was: {weather_data.temp.iloc[0]} Degrees Celcius, with humidity of: {weather_data.rhum.iloc[0]}%."
+    weather_string_w = f"The wind was: {weather_data.wspd.iloc[0]} km/h, gusting to {weather_data.wpgt.iloc[0]}, blowing: {weather_data.wdir.iloc[0]} degrees."
+    weather_string = weather_string_g + weather_string_t + weather_string_w
+
+    return weather_string
+
+@callback(
+Output("activitypage-description", "children"),
+Input("activitypage-df",'data'),
+Input('activity-page-header', 'children')
+)
+def update_description(activity, activity_name):
+    activity = pd.read_json(activity, orient='split')
+    description = f"The activity: {activity_name} was recorded on {activity.time.iloc[0]} and had a duration of: {pd.to_timedelta(activity['elapsed_time'].iloc[-1])}."
+
+    return description
+
 def layout(activity_name=None):
 
     layout = html.Div(children=[
-        html.H1(children=f"{activity_name}",
+        html.H2(children=f"{activity_name}",
                 id='activity-page-header'),
-        html.Div(children=["Visualizations",
-            dcc.Tabs(
-                id="activitypage-tabs",
-                value="tabs",
+        dbc.Accordion(
+            always_open=True,
+            children=[
+            dbc.AccordionItem(
+                title="Description",
                 children=[
-                    dcc.Tab(id="activitypage-polar-plot", label="Polar", value="tab1-Polar-Plot"),
-                    dcc.Tab(id="activitypage-map-plot", label="Map", value="tab2-Map"),
-                    dcc.Tab(id="activitypage-line-plot", label="Line", value="tab3-Line"),
-                    dcc.Tab(id="activitypage-histogram-plot", label="histogram", value="tab4-Histogram"),
-                    dcc.Tab(id="activitypage-data-table",label="Data", value="tab5-Data")
+                html.Div(children=[
+                    html.H3(children="Description:"),
+                    dbc.Spinner(children=[
+                        html.Article(children=[], id='activitypage-description')
+                        ])
+                    ])
                 ]),
-                html.Div(id='activitypage-tabs-content')
-        ],
-        style={'width': '100%', 'float': 'none', 'display': 'inline-block'}),
+            dbc.AccordionItem(
+                title="Weather",
+                children=[
+                html.Div(children=[
+                    html.H3(children="Weather:"),
+                    dbc.Spinner(children=[
+                        html.Article(children=[], id='activitypage-weatherinfo')
+                        ])
+                    ])
+                ]),
+            dbc.AccordionItem(title='Visualization',
+                children=[
+                    html.Div(children=[
+                        html.H3(children=["Visualizations"]),
+                        dcc.Tabs(
+                            id="activitypage-tabs",
+                            value="tabs",
+                            children=[
+                                dcc.Tab(id="activitypage-polar-plot", label="Polar", value="tab1-Polar-Plot"),
+                                dcc.Tab(id="activitypage-map-plot", label="Map", value="tab2-Map"),
+                                dcc.Tab(id="activitypage-line-plot", label="Line", value="tab3-Line"),
+                                dcc.Tab(id="activitypage-histogram-plot", label="histogram", value="tab4-Histogram"),
+                                dcc.Tab(id="activitypage-data-table",label="Data", value="tab5-Data")
+                            ]),
+                            html.Div(id='activitypage-tabs-content')
+                        ],
+                        style={'width': '100%', 'float': 'none', 'display': 'inline-block'}),
+                ]),
+            ]),
         # dcc.Store stores the activity dataframe
-        dcc.Store(id='activitypage-df')
-
-    ])
+        dcc.Store(id='activitypage-df', storage_type='memory')
+        ])
 
     return layout

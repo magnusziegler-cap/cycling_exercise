@@ -36,7 +36,7 @@ layout = html.Div(children=[
     ]),
     #keep summary stats stored per session so that recalculating doesn't happen as often
     dcc.Store(id='activity-summary-data', storage_type='session'),
-    dcc.Store(id='activity-summary-tracks', storage_type='local') 
+    dcc.Store(id='activity-summary-tracks', storage_type='session') 
 
 ])
 
@@ -57,7 +57,7 @@ def calculate_summary_stats(activity):
         'name':activity['name'].iloc[0],
         'spd_mean':activity['speed'].mean().round(2),
         'spd_med':activity['speed'].median().round(2),
-        'elapsed_time':activity['elapsed_time'].iloc[-1],
+        'elapsed_time':str(activity['elapsed_time'].iloc[-1]),
         'total_distance':activity['cumulative_distance'].iloc[-1].round(2)}
                  
     return summary
@@ -97,7 +97,6 @@ def update_summary_table(activity_summary_data, activities_list):
     activities_list = pd.read_json(activities_list, orient='split')
 
     activity_summary_data =pd.concat([activity_summary_data, activities_list['link']], axis=1)
-    print(activity_summary_data['elapsed_time'])
 
     fig = dash_table.DataTable(data=activity_summary_data.to_dict('records'),
         columns=[{"name": i, "id": i, 'presentation':'markdown'} for i in activity_summary_data.columns],
@@ -114,6 +113,7 @@ def update_summary_table(activity_summary_data, activities_list):
     Input("activity-summary-tracks","data")
 )
 def update_summary_map(tracks):
+    
     tracks = pd.read_json(tracks)
     
     fig = px.line_mapbox(
@@ -157,3 +157,4 @@ def update_summary_map(tracks):
     #     )
     
     return fig
+

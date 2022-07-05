@@ -14,6 +14,8 @@ dash.register_page(__name__, path_template="/activity/<activity_name>")
 
 ## statics
 default_input_path = "C:\\Users\\maziegle\\OneDrive - Capgemini\\Documents\\training\\cycling_exercise\\activities\\"
+default_loading_format = '.json'
+
 weather_LUT=pd.DataFrame(columns=['Weather Condition'],
      data=['Clear','Fair','Cloudy','Overcast',
     'Fog','Freezing Fog',
@@ -96,7 +98,7 @@ def render_tab_content(tab):
     Input('activity-page-header', 'children')
     )
 def load_activity(activity_name):
-    activity = utils_loading.load(default_input_path + activity_name + '.gpx')
+    activity = utils_loading.load(default_input_path + activity_name + default_loading_format)
     return activity.to_json(date_format='iso', orient='split') #need to dump to memory in json
 
 @callback(
@@ -167,7 +169,7 @@ def update_dataTable(activity):
 
     activity = pd.read_json(activity, orient='split')
     fig = dash_table.DataTable(data=activity.to_dict('records'),
-        columns=[{"name": i, "id": i} for i in activity.columns],
+        columns=[{"name": i, "id": i,'hideable':True} for i in activity.columns],
         style_cell=dict(textAlign='left'),
         cell_selectable=True,
         row_selectable='multi',
@@ -244,12 +246,12 @@ def update_weatherData(activity):
 
     ## table
     weather_table = dash_table.DataTable(data=weather_data.to_dict('records'),
-        columns=[{"name": i, "id": i} for i in weather_data.columns],
+        columns=[{"name": i, "id": i, 'hideable':True} for i in weather_data.columns],
         style_cell=dict(textAlign='left'),
         cell_selectable=True,
         row_selectable='multi',
         sort_action='native',
-        hidden_columns=[],
+        hidden_columns=["snow", "tsun"],
         filter_action='native')
 
     return weather_string, weather_string_mean, weather_table
@@ -278,7 +280,7 @@ def layout(activity_name=None):
                 children=[
                 html.Div(children=[
                     dbc.Spinner(children=[
-                        html.H3(children="Description:"),
+                        html.H3(children="Description"),
                         html.Article(children=[], id='activitypage-description')
                         ])
                     ])
@@ -288,7 +290,7 @@ def layout(activity_name=None):
                 children=[
                 html.Div(children=[
                     dbc.Spinner(children=[
-                        html.H3(children="Weather:"),
+                        html.H3(children="Weather"),
                         html.P(children=[], id='activitypage-weatherinfo'),
                         html.P(children=[], id="activitypage-weathermeaninfo"),
                         dbc.Table(children=[], id="activitypage-weather-table")

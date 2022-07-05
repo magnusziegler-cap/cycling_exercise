@@ -1,4 +1,3 @@
-from re import A
 import pandas as pd
 import numpy as np
 import os
@@ -33,7 +32,7 @@ def gpx_to_json(input_path:str, activity_name:str, output_path:str=None) -> str:
         output_fname = os.path.join(output_path,os.path.splitext(activity_name)[0]) + '.json'
     
         with open(output_fname, 'w') as fn:
-            json.dump(activity, fn,ensure_ascii=False, indent=4, sort_keys=True)
+            json.dump(activity, fn, ensure_ascii=False, indent=4, sort_keys=True)
     
         print("Created: " + output_fname)
 
@@ -110,7 +109,16 @@ def load(input_path):
         return activities
     else:
         path, fname =  os.path.split(input_path)
-        activity = gpx_to_df(input_path=path, activity_name=fname)
+        fn, ext = fname.split('.')
+        if ext=='gpx':
+            activity = gpx_to_df(input_path=path, activity_name=fname)
+        elif ext=='json':
+            activity = json.load(open(os.path.join(path,fname)))
+            activity = pd.DataFrame(activity)
+        elif ext=='csv':
+            activity = pd.read_csv(os.path.join(path,fname))
+
+        print(f"Read {ext} Activity: {fname} from {input_path}.")
         activity = utils_fx.apply_base_transforms(activity)
 
         return activity

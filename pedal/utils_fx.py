@@ -126,7 +126,7 @@ def scale_hr(df, resting_hr=55):
 
 def update_time(df):
 
-    df["time"] = pd.to_datetime(df["time"], format="%Y-%m-%dT%H:%M:%SZ" )
+    df["time"] = pd.to_datetime(df["time"], format="%Y-%m-%dT%H:%M:%SZ")
     df["elapsed_time"] = df["time"] - df.iloc[0].time
     df["elapsed_time_s"] = df["elapsed_time"]/np.timedelta64(1,'s')
 
@@ -139,8 +139,8 @@ def apply_base_transforms(df, resting_hr=55, origin:tuple=(58.4108,15.6214,45)):
     df = scale_hr(df, resting_hr)
 
     (lat_origin, lon_origin, ele_origin) = origin
-    #if there is a big displacement (i.e. from zwift), move the track
-    if (abs(lat_origin-df.lat[0]) > 1) or (abs(lon_origin-df.lon[0]) > 1):
+    #if there is a big displacement (i.e. from zwift), move the track. roughly a square of 500km on each edge
+    if (abs(lat_origin-df.lat[0]) > 2.5) or (abs(lon_origin-df.lon[0]) > 2.5):
         df = set_track_origin(df,lat_origin, lon_origin, ele_origin)
 
     ## round some data

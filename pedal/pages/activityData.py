@@ -198,6 +198,7 @@ def update_HistFig(activity):
 @callback(
 Output("activitypage-weatherinfo", "children"),
 Output("activitypage-weathermeaninfo", "children"),
+Output('activitypage-weatherstationinfo', 'children'),
 Output("activitypage-weather-table","children"),
 Input("activitypage-df",'data')
 )
@@ -216,36 +217,42 @@ def update_weatherData(activity):
                                 lat=activity.lat.mean(),
                                 lon=activity.lon.mean(),
                                 alt=activity.ele.iloc[0])
+    
+    weather_station_data = weather_station.get_stations()
 
     start_time = pd.to_datetime(activity['time'].iloc[0], yearfirst=True, utc=True).to_pydatetime().replace(tzinfo=None)
     end_time = pd.to_datetime(activity['time'].iloc[-1], yearfirst=True, utc=True).to_pydatetime().replace(tzinfo=None)
 
+    # grab weather data
     weather_data = Hourly(
                     loc=weather_station,
                     start=start_time,
                     end=end_time)
     weather_data = weather_data.fetch()
+    # clean up the data
     weather_data.dropna(axis='columns', how='all')
     weather_data['coco'] = weather_data['coco'].replace(np.nan, value=27)
     weather_data['coco'] = weather_data['coco'].apply(lambda x:weather_LUT['Weather Condition'].iloc[int(x)])
     weather_data.insert(loc=0, column="time", value=weather_data.index)
     
-    print(weather_data)
-
+    if not weather_data.empty:
     ## at start
-    weather_string_g = f"The activity started when the weather was classified as: {weather_data.coco.iloc[0]}. "
-    weather_string_t = f"The temperature was: {weather_data.temp.iloc[0]} Degrees Celcius, with humidity of: {weather_data.rhum.iloc[0]}%. "
-    weather_string_w = f"The wind was: {weather_data.wspd.iloc[0]} km/h, gusting to {weather_data.wpgt.iloc[0]}, blowing: {weather_data.wdir.iloc[0]} degrees. "
-    weather_string = weather_string_g + weather_string_t + weather_string_w
+        weather_string_g = f"The activity started when the weather was classified as: {weather_data.coco.iloc[0]}. "
+        weather_string_t = f"The temperature was: {weather_data.temp.iloc[0]} Degrees Celcius, with humidity of: {weather_data.rhum.iloc[0]}%. "
+        weather_string_w = f"The wind was: {weather_data.wspd.iloc[0]} km/h, gusting to {weather_data.wpgt.iloc[0]}, blowing: {weather_data.wdir.iloc[0]} degrees. "
+        weather_string = weather_string_g + weather_string_t + weather_string_w
 
-    ## mean
-    weather_string_gm = f"As a whole, the weather was: {weather_data['coco'].mode()[0]}. "
-    weather_string_tm = f"On average the temperature was: {weather_data['temp'].mean().round()} Degrees Celcius, with humidity of: {weather_data.rhum.mean().round()}%. "
-    weather_string_wm = f"The wind was typically: {weather_data.wspd.mean().round()} km/h, gusting to {weather_data.wpgt.mean().round()}, and blowing: {weather_data.wdir.mean().round()} degrees. "
-    weather_string_mean = weather_string_gm + weather_string_tm + weather_string_wm
+        ## mean
+        weather_string_gm = f"As a whole, the weather was: {weather_data['coco'].mode()[0]}. "
+        weather_string_tm = f"On average the temperature was: {weather_data['temp'].mean().round()} Degrees Celcius, with humidity of: {weather_data.rhum.mean().round()}%. "
+        weather_string_wm = f"The wind was typically: {weather_data.wspd.mean().round()} km/h, gusting to {weather_data.wpgt.mean().round()}, and blowing: {weather_data.wdir.mean().round()} degrees. "
+        weather_string_mean = weather_string_gm + weather_string_tm + weather_string_wm
 
-    ## table
-    weather_table = dash_table.DataTable(data=weather_data.to_dict('records'),
+        ## Station Info
+        weather_string_station = f"Weather information was gathered from the following station(s): {*[str(nm) for nm in weather_station_data['name']],}"
+
+        ## table
+        weather_table = dash_table.DataTable(data=weather_data.to_dict('records'),
         columns=[{"name": i, "id": i, 'hideable':True} for i in weather_data.columns],
         style_cell=dict(textAlign='left'),
         cell_selectable=True,
@@ -254,7 +261,10 @@ def update_weatherData(activity):
         hidden_columns=["snow", "tsun"],
         filter_action='native')
 
-    return weather_string, weather_string_mean, weather_table
+        return weather_string, weather_string_mean, weather_string_station, weather_table
+    
+    else:
+        return "weather data could not be loaded", "weather data could not be loaded","weather data could not be loaded", []
 
 @callback(
 Output("activitypage-description", "children"),
@@ -293,6 +303,7 @@ def layout(activity_name=None):
                         html.H3(children="Weather"),
                         html.P(children=[], id='activitypage-weatherinfo'),
                         html.P(children=[], id="activitypage-weathermeaninfo"),
+                        html.P(children=[], id="activitypage-weatherstationinfo"),
                         dbc.Table(children=[], id="activitypage-weather-table")
                         ])
                     ])

@@ -6,8 +6,8 @@ import utils_loading
 import pandas as pd
 
 ## statics
-default_input_path = "C:\\Users\\maziegle\\OneDrive - Capgemini\\Documents\\training\\cycling_exercise\\activities\\"
-#activities_list = pd.DataFrame(data={})
+default_input_path = "C:\\Users\\maziegle\\OneDrive - Capgemini\\Documents\\training\\cycling_exercise\\pedal\\activities\\"
+# default_input_path = "pedal\\activities\\"
 
 dash.register_page(__name__)
 

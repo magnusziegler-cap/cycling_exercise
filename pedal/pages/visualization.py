@@ -7,7 +7,8 @@ import utils_loading
 
 dash.register_page(__name__)
 ## load data
-default_input_path = "C:\\Users\\maziegle\\OneDrive - Capgemini\\Documents\\training\\cycling_exercise\\activities\\"
+default_input_path = "C:\\Users\\maziegle\\OneDrive - Capgemini\\Documents\\training\\cycling_exercise\\pedal\\activities\\"
+
 
 #populate list
 activities = utils_loading.get_activities(default_input_path, 'gpx')

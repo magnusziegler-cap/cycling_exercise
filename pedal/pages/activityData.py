@@ -13,7 +13,10 @@ import datetime
 dash.register_page(__name__, path_template="/activity/<activity_name>")
 
 ## statics
-default_input_path = "C:\\Users\\maziegle\\OneDrive - Capgemini\\Documents\\training\\cycling_exercise\\activities\\"
+default_input_path = "C:\\Users\\maziegle\\OneDrive - Capgemini\\Documents\\training\\cycling_exercise\\pedal\\activities\\"
+# default_input_path = "pedal\\activities\\"
+
+
 default_loading_format = '.json'
 
 weather_LUT=pd.DataFrame(columns=['Weather Condition'],

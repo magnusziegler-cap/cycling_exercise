@@ -137,7 +137,7 @@ def update_MapFig(jsondata):
         lon=activity["lon"],
         color=activity["gradient"],
         range_color=[-5,5],
-        center={'lat':activity.iloc[0].lat, 'lon':activity.iloc[0].lon},
+        center={'lat':activity['lat'].mean(), 'lon':activity['lon'].mean()},
         title="Data through the map",
         height=720,
         width=1080,

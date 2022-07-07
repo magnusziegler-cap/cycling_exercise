@@ -145,6 +145,7 @@ def update_summary_map(tracks):
             lon="lon",
             color="name",
             mapbox_style="stamen-terrain",
+            center={"lat":tracks.lat.mean(),"lon":tracks.lon.mean()},
             height=1080,
             width=1080)
 

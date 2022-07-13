@@ -1,4 +1,3 @@
-from subprocess import call
 import dash
 from dash import html, dcc, dash_table, Input, Output,State, callback
 import dash_bootstrap_components as dbc
@@ -15,6 +14,8 @@ dash.register_page(__name__,)
 
 DEFAULT_READ_FORMAT = '.json'
 activity_summary_content_string = "Summary statistics for all available activities will be calculated and displayed. \n *Warning: This can take time*"
+mapbox_token_public = 'pk.eyJ1IjoibWFnbnVzLXppZWdsZXItY2FwIiwiYSI6ImNsNWNjaDVzcTBnN2gzbG9lZzdhamNwczYifQ.3B2q_3092uMTZHp4ljh8RA'
+
 
 layout = html.Div(children=[
     html.Div(children=[
@@ -144,16 +145,19 @@ def update_summary_map(tracks):
             lat="lat",
             lon="lon",
             color="name",
-            mapbox_style="stamen-terrain",
             center={"lat":tracks.lat.mean(),"lon":tracks.lon.mean()},
             height=1080,
             width=1080)
+
+    fig.update_layout(
+        mapbox_style='light',
+        mapbox_accesstoken=mapbox_token_public)
 
     fig.update_layout(legend=dict(
         yanchor="bottom",
         y=0.01,
         xanchor="left",
-        x=0.01
+        x=0.01,
         ))
     
     return fig

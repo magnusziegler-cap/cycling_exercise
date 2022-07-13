@@ -311,7 +311,8 @@ def layout(activity_name=None):
                         ])
                     ])
                 ]),
-            dbc.AccordionItem(title='Visualization',
+            dbc.AccordionItem(
+                title='Visualization',
                 children=[
                     html.Div(children=[
                         html.H3(children=["Visualizations"]),
@@ -329,9 +330,22 @@ def layout(activity_name=None):
                         ],
                         style={'width': '100%', 'float': 'none', 'display': 'inline-block'}),
                 ]),
+            dbc.AccordionItem(
+                title='Posterize',
+                children=[
+                    html.Div(
+                        children=[
+                            html.P(children=["Use the button below to create a poster-style visualization from the activity "]),
+                            dbc.Nav(
+                                [
+                                dbc.NavItem(dbc.NavLink("Generate and Go to Poster", active=True, href=f"/poster/{activity_name}")),
+                                ],
+                                pills=True),
+                        ]),
             ]),
+        ]),
         # dcc.Store stores the activity dataframe
-        dcc.Store(id='activitypage-df', storage_type='memory')
+        dcc.Store(id='activitypage-df', storage_type='memory'),
         ])
 
     return layout
